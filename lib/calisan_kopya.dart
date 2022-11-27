@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:hive_flutter/adapters.dart';
+import 'package:searchfield/searchfield.dart';
+import 'ingredient_model.dart';
 
 //# local database: we need hide and hive flutter. add libraries in pubspec.yaml file
 // hive: ^2.2.1
@@ -44,15 +46,37 @@ class _MyHomePageState extends State<MyHomePage> {
   final _formKey = GlobalKey<FormState>();
   // Create a text controller and use it to retrieve the current value of the TextField.
   final _itemNameController = TextEditingController();
-  // final _countController = TextEditingController();
 
+  // final _countController = TextEditingController();
+  final focus = FocusNode();
 //dispose as necessarily
   @override
   void dispose() {
+    focus.dispose();
     Hive.close(); //closes all open boxes
     _itemNameController.dispose();
     // _countController.dispose(); //dispose controllers
     super.dispose();
+  }
+
+  List<Ingredient> ingredients = [];
+  Ingredient _selectedIngredient = Ingredient.init();
+  @override
+  void initState() {
+    super.initState();
+    ingredients = data.map((e) => Ingredient.fromMap(e)).toList();
+  }
+
+  bool containsIngredients(String text) {
+    final Ingredient? result = ingredients.firstWhere(
+        (Ingredient country) =>
+            country.name.toLowerCase() == text.toLowerCase(),
+        orElse: () => Ingredient.init());
+
+    if (result!.name.isEmpty) {
+      return false;
+    }
+    return true;
   }
 
   @override
@@ -392,48 +416,40 @@ class _MyHomePageState extends State<MyHomePage> {
                   children: [
                     Padding(
                       padding: const EdgeInsets.only(top: 8, bottom: 4),
-                      child: TextFormField(
-                        controller:
-                            _itemNameController, //will help get the field value on submit
-                        decoration: const InputDecoration(
-                          border: OutlineInputBorder(),
-                          labelText: 'Malzemenin adı',
-                        ),
-                        //validator on submit, must return null when every thing ok
-                        // The validator receives the text that the user has entered.
-                        validator: (value) {
+                      child: SearchField(
+                        suggestionState: Suggestion.hidden,
+                        hasOverlay: true,
+                        hint: "Malzeme ekle",
+                        suggestions: ingredients
+                            .map((malzeme) => SearchFieldListItem(malzeme.name,
+                                item: malzeme))
+                            .toList(),
+                        controller: _itemNameController,
+                        //VALİDATORLA OYNAMADAN ÖNCEKİ
+                        /* validator: (value) {
                           if (value == null || value.isEmpty) {
                             return 'Burası boş olmamalı 🤔';
                           } else if (value.trim().isEmpty) {
                             return 'Burası boş olmamalı 🤔';
+                          } else if (!containsIngredients(value)) {}
+                          return null;
+                          */
+                        validator: (value) {
+                          if (value!.isEmpty || !containsIngredients(value)) {
+                            return 'Please Enter a valid ingredient';
                           }
                           return null;
                         },
+                        inputType: TextInputType.text,
+                        onSuggestionTap: (SearchFieldListItem<Ingredient> x) {
+                          setState(() {
+                            _selectedIngredient = x.item!;
+                          });
+                          _formKey.currentState!.validate();
+                          focus.unfocus();
+                        },
                       ),
                     ),
-                    // Padding(
-                    //   padding: const EdgeInsets.only(top: 8, bottom: 4),
-                    //   child: TextFormField(
-                    //     controller:
-                    //         _countController, //will help get the field value on submit
-                    //     // initialValue: "1",
-                    //     keyboardType: TextInputType.number,
-                    //     decoration: const InputDecoration(
-                    //       border: OutlineInputBorder(),
-                    //       labelText: 'Count',
-                    //     ),
-                    //     //validator on submit, must return null when every thing ok
-                    //     // The validator receives the text that the user has entered.
-                    //     validator: (value) {
-                    //       if (value == null || value.isEmpty) {
-                    //         return 'Empties not allowed';
-                    //       } else if (value.trim().isEmpty) {
-                    //         return "Empties not allowed";
-                    //       }
-                    //       return null;
-                    //     },
-                    //   ),
-                    // ),
                   ],
                 )),
             actions: [
